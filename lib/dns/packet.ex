@@ -100,11 +100,12 @@ defmodule DNS.Packet do
 
   defp extract_label(rest, binary, label_parts \\ [])
 
-  defp extract_label(<<1::size(1), 1::size(1), pos::size(14), rest::binary>>, binary, []) do
+  defp extract_label(<<1::size(1), 1::size(1), pos::size(14), rest::binary>>, binary, label_parts) do
     <<_::bytes-size(pos), jump::bytes>> = binary
     [label, _] = extract_label(jump, binary)
 
-    [label, rest]
+    label_parts = [label | label_parts]
+    [label_parts |> Enum.reverse() |> Enum.join("."), rest]
   end
 
   defp extract_label(<<0, rest::binary>>, _binary, label_parts) do

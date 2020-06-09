@@ -196,5 +196,41 @@ defmodule DNS.PacketTest do
                Packet.parse(answer)
              )
     end
+
+    test "support message compression when a domain name is represented as a sequence of labels ending with a pointer" do
+      answer =
+        <<0x52, 0x99, 0x81, 0x80, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x05, 0x62,
+          0x61, 0x69, 0x64, 0x75, 0x03, 0x63, 0x6F, 0x6D, 0x00, 0x00, 0x01, 0x00, 0x01, 0x05,
+          0x62, 0x61, 0x69, 0x64, 0x75, 0xC0, 18, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x01, 0x34,
+          0x00, 0x04, 0x27, 0x9C, 0x45, 0x4F, 0xC0, 0x0C, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+          0x01, 0x34, 0x00, 0x04, 0xDC, 0xB5, 0x26, 0x94>>
+
+      assert match?(
+               %{
+                 answers: [
+                   %{addr: {39, 156, 69, 79}, domain: "baidu.com", ttl: 308},
+                   %{addr: {220, 181, 38, 148}, domain: "baidu.com", ttl: 308}
+                 ],
+                 header: %{
+                   additional_count: 0,
+                   answer_count: 2,
+                   authoritative_answer: false,
+                   authority_count: 0,
+                   id: 21145,
+                   operation_code: 0,
+                   query_response: true,
+                   question_count: 1,
+                   recursion_available: true,
+                   recursion_desired: true,
+                   reserved: 0,
+                   response_code: 0,
+                   truncated_message: false
+                 },
+                 questions: [%{name: "baidu.com", type: :A}]
+               },
+               Packet.parse(answer)
+             )
+    end
+
   end
 end

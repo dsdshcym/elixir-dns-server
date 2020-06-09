@@ -2,7 +2,7 @@ defmodule DNS.Packet do
   def parse(binary) do
     with [header, rest] = parse_header(binary),
          [questions, rest] = parse_questions(rest, binary, header.question_count),
-         [answers, _rest] = parse_answers(rest, binary, header.answer_count) do
+         [answers, _rest] = parse_resource_records(rest, binary, header.answer_count) do
       %{
         header: header,
         questions: questions,
@@ -74,34 +74,34 @@ defmodule DNS.Packet do
     %{name: name, type: type}
   end
 
-  defp parse_answers(rest, binary, count, answers \\ [])
+  defp parse_resource_records(rest, binary, count, resource_records \\ [])
 
-  defp parse_answers(rest, _binary, 0, answers) do
-    [Enum.reverse(answers), rest]
+  defp parse_resource_records(rest, _binary, 0, resource_records) do
+    [Enum.reverse(resource_records), rest]
   end
 
-  defp parse_answers(rest, binary, count, answers) do
-    [answer, rest] = parse_answer(rest, binary)
+  defp parse_resource_records(rest, binary, count, resource_records) do
+    [answer, rest] = parse_resource_record(rest, binary)
 
-    parse_answers(rest, binary, count - 1, [answer | answers])
+    parse_resource_records(rest, binary, count - 1, [answer | resource_records])
   end
 
-  defp parse_answer(rest, binary) do
+  defp parse_resource_record(rest, binary) do
     [label, rest] = extract_label(rest, binary, [])
 
     <<type_enum::size(16), _class::size(16), ttl::size(32), len::size(16), rdata::bytes-size(len),
       rest::binary>> = rest
 
-    answer = build_answer(label, type_enum, ttl, rdata, binary)
+    answer = build_resource_record(label, type_enum, ttl, rdata, binary)
 
     [answer, rest]
   end
 
-  defp build_answer(domain, type_enum, ttl, rdata, binary) when is_number(type_enum) do
-    build_answer(domain, resolve_type(type_enum), ttl, rdata, binary)
+  defp build_resource_record(domain, type_enum, ttl, rdata, binary) when is_number(type_enum) do
+    build_resource_record(domain, resolve_type(type_enum), ttl, rdata, binary)
   end
 
-  defp build_answer(domain, :A, ttl, rdata, _binary) do
+  defp build_resource_record(domain, :A, ttl, rdata, _binary) do
     %{
       type: :A,
       ttl: ttl,
@@ -110,7 +110,7 @@ defmodule DNS.Packet do
     }
   end
 
-  defp build_answer(domain, :NS, ttl, rdata, binary) do
+  defp build_resource_record(domain, :NS, ttl, rdata, binary) do
     [host, ""] = extract_label(rdata, binary)
 
     %{
@@ -121,7 +121,7 @@ defmodule DNS.Packet do
     }
   end
 
-  defp build_answer(domain, :CNAME, ttl, rdata, binary) do
+  defp build_resource_record(domain, :CNAME, ttl, rdata, binary) do
     [host, ""] = extract_label(rdata, binary)
 
     %{
@@ -132,7 +132,7 @@ defmodule DNS.Packet do
     }
   end
 
-  defp build_answer(domain, :MX, ttl, rdata, binary) do
+  defp build_resource_record(domain, :MX, ttl, rdata, binary) do
     <<preference::16, rest::binary>> = rdata
     [exchange, ""] = extract_label(rest, binary)
 
@@ -145,7 +145,7 @@ defmodule DNS.Packet do
     }
   end
 
-  defp build_answer(domain, :AAAA, ttl, rdata, _binary) do
+  defp build_resource_record(domain, :AAAA, ttl, rdata, _binary) do
     ipv6 =
       for(<<part::16 <- rdata>>, do: part)
       |> List.to_tuple()

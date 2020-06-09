@@ -132,6 +132,19 @@ defmodule DNS.Packet do
     }
   end
 
+  defp build_answer(domain, :MX, ttl, rdata, binary) do
+    <<preference::16, rest::binary>> = rdata
+    [exchange, ""] = extract_label(rest, binary)
+
+    %{
+      type: :MX,
+      ttl: ttl,
+      domain: domain,
+      preference: preference,
+      exchange: exchange
+    }
+  end
+
   defp extract_label(rest, binary, label_parts \\ [])
 
   defp extract_label(<<1::size(1), 1::size(1), pos::size(14), rest::binary>>, binary, label_parts) do
@@ -157,4 +170,5 @@ defmodule DNS.Packet do
   defp resolve_type(1), do: :A
   defp resolve_type(2), do: :NS
   defp resolve_type(5), do: :CNAME
+  defp resolve_type(15), do: :MX
 end

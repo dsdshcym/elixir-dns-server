@@ -145,6 +145,19 @@ defmodule DNS.Packet do
     }
   end
 
+  defp build_answer(domain, :AAAA, ttl, rdata, _binary) do
+    ipv6 =
+      for(<<part::16 <- rdata>>, do: part)
+      |> List.to_tuple()
+
+    %{
+      type: :AAAA,
+      ttl: ttl,
+      domain: domain,
+      addr: ipv6
+    }
+  end
+
   defp extract_label(rest, binary, label_parts \\ [])
 
   defp extract_label(<<1::size(1), 1::size(1), pos::size(14), rest::binary>>, binary, label_parts) do
@@ -171,4 +184,5 @@ defmodule DNS.Packet do
   defp resolve_type(2), do: :NS
   defp resolve_type(5), do: :CNAME
   defp resolve_type(15), do: :MX
+  defp resolve_type(28), do: :AAAA
 end

@@ -85,17 +85,29 @@ defmodule DNS.Packet do
   defp parse_answer(rest, binary) do
     [label, rest] = extract_label(rest, binary, [])
 
-    <<_type::size(16), _class::size(16), ttl::size(32), len::size(16), ip::bytes-size(len),
+    <<type::size(16), _class::size(16), ttl::size(32), len::size(16), ip::bytes-size(len),
       rest::binary>> = rest
 
-    [
-      %{
-        ttl: ttl,
-        domain: label,
-        addr: ip |> :binary.bin_to_list() |> List.to_tuple()
-      },
-      rest
-    ]
+    answer =
+      case type do
+        1 ->
+          %{
+            ttl: ttl,
+            domain: label,
+            addr: ip |> :binary.bin_to_list() |> List.to_tuple()
+          }
+
+        5 ->
+          [host, ""] = extract_label(ip, binary)
+
+          %{
+            ttl: ttl,
+            domain: label,
+            host: host
+          }
+      end
+
+    [answer, rest]
   end
 
   defp extract_label(rest, binary, label_parts \\ [])

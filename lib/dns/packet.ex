@@ -110,6 +110,17 @@ defmodule DNS.Packet do
     }
   end
 
+  defp build_answer(domain, :NS, ttl, rdata, binary) do
+    [host, ""] = extract_label(rdata, binary)
+
+    %{
+      type: :NS,
+      ttl: ttl,
+      domain: domain,
+      host: host
+    }
+  end
+
   defp build_answer(domain, :CNAME, ttl, rdata, binary) do
     [host, ""] = extract_label(rdata, binary)
 
@@ -144,5 +155,6 @@ defmodule DNS.Packet do
   end
 
   defp resolve_type(1), do: :A
+  defp resolve_type(2), do: :NS
   defp resolve_type(5), do: :CNAME
 end

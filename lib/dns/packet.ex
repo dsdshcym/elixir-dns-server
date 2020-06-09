@@ -89,10 +89,10 @@ defmodule DNS.Packet do
   defp parse_answer(rest, binary) do
     [label, rest] = extract_label(rest, binary, [])
 
-    <<type_enum::size(16), _class::size(16), ttl::size(32), len::size(16), ip::bytes-size(len),
+    <<type_enum::size(16), _class::size(16), ttl::size(32), len::size(16), rdata::bytes-size(len),
       rest::binary>> = rest
 
-    answer = build_answer(label, type_enum, ttl, ip, binary)
+    answer = build_answer(label, type_enum, ttl, rdata, binary)
 
     [answer, rest]
   end

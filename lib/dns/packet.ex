@@ -3,12 +3,14 @@ defmodule DNS.Packet do
     with [header, rest] = parse_header(binary),
          [questions, rest] = parse_questions(rest, binary, header.question_count),
          [answers, rest] = parse_resource_records(rest, binary, header.answer_count),
-         [authorities, _rest] = parse_resource_records(rest, binary, header.authority_count) do
+         [authorities, rest] = parse_resource_records(rest, binary, header.authority_count),
+         [additionals, ""] = parse_resource_records(rest, binary, header.additional_count) do
       %{
         header: header,
         questions: questions,
         answers: answers,
-        authorities: authorities
+        authorities: authorities,
+        additionals: additionals
       }
     end
   end

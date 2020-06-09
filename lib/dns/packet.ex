@@ -60,14 +60,18 @@ defmodule DNS.Packet do
 
   defp parse_question(rest, binary) do
     [label, rest] = extract_label(rest, binary)
-    <<type::size(16), _class::size(16), rest::binary>> = rest
 
-    type =
-      case type do
-        1 -> :A
-      end
+    <<type_enum::size(16), _class::size(16), rest::binary>> = rest
 
-    [%{name: label, type: type}, rest]
+    [build_question(label, type_enum), rest]
+  end
+
+  defp build_question(name, type_enum) when is_number(type_enum) do
+    build_question(name, resolve_type(type_enum))
+  end
+
+  defp build_question(name, type) when is_atom(type) do
+    %{name: name, type: type}
   end
 
   defp parse_answers(rest, binary, count, answers \\ [])
@@ -85,29 +89,36 @@ defmodule DNS.Packet do
   defp parse_answer(rest, binary) do
     [label, rest] = extract_label(rest, binary, [])
 
-    <<type::size(16), _class::size(16), ttl::size(32), len::size(16), ip::bytes-size(len),
+    <<type_enum::size(16), _class::size(16), ttl::size(32), len::size(16), ip::bytes-size(len),
       rest::binary>> = rest
 
-    answer =
-      case type do
-        1 ->
-          %{
-            ttl: ttl,
-            domain: label,
-            addr: ip |> :binary.bin_to_list() |> List.to_tuple()
-          }
-
-        5 ->
-          [host, ""] = extract_label(ip, binary)
-
-          %{
-            ttl: ttl,
-            domain: label,
-            host: host
-          }
-      end
+    answer = build_answer(label, type_enum, ttl, ip, binary)
 
     [answer, rest]
+  end
+
+  defp build_answer(domain, type_enum, ttl, rdata, binary) when is_number(type_enum) do
+    build_answer(domain, resolve_type(type_enum), ttl, rdata, binary)
+  end
+
+  defp build_answer(domain, :A, ttl, rdata, _binary) do
+    %{
+      type: :A,
+      ttl: ttl,
+      domain: domain,
+      addr: rdata |> :binary.bin_to_list() |> List.to_tuple()
+    }
+  end
+
+  defp build_answer(domain, :CNAME, ttl, rdata, binary) do
+    [host, ""] = extract_label(rdata, binary)
+
+    %{
+      type: :CNAME,
+      ttl: ttl,
+      domain: domain,
+      host: host
+    }
   end
 
   defp extract_label(rest, binary, label_parts \\ [])
@@ -131,4 +142,7 @@ defmodule DNS.Packet do
        ) do
     extract_label(rest, binary, [label_part | label_parts])
   end
+
+  defp resolve_type(1), do: :A
+  defp resolve_type(5), do: :CNAME
 end

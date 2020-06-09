@@ -1,10 +1,12 @@
 defmodule DNS.Packet do
   def parse(binary) do
     with [header, rest] = parse_header(binary),
-         [questions, _rest] = parse_questions(rest, header.question_count) do
+         [questions, rest] = parse_questions(rest, binary, header.question_count),
+         [answers, _rest] = parse_answers(rest, binary, header.answer_count) do
       %{
         header: header,
-        questions: questions
+        questions: questions,
+        answers: answers
       }
     end
   end
@@ -45,19 +47,19 @@ defmodule DNS.Packet do
     ]
   end
 
-  defp parse_questions(binary, count, questions \\ [])
+  defp parse_questions(rest, _binary, count, questions \\ [])
 
-  defp parse_questions(rest, 0, questions) do
+  defp parse_questions(rest, _binary, 0, questions) do
     [Enum.reverse(questions), rest]
   end
 
-  defp parse_questions(binary, count, questions) do
-    [question, rest] = parse_question(binary)
-    parse_questions(rest, count - 1, [question | questions])
+  defp parse_questions(rest, binary, count, questions) do
+    [question, rest] = parse_question(rest, binary)
+    parse_questions(rest, binary, count - 1, [question | questions])
   end
 
-  defp parse_question(binary) do
-    [label, rest] = extract_label(binary)
+  defp parse_question(rest, binary) do
+    [label, rest] = extract_label(rest, binary)
     <<type::size(16), _class::size(16), rest::binary>> = rest
 
     type =
@@ -68,13 +70,52 @@ defmodule DNS.Packet do
     [%{name: label, type: type}, rest]
   end
 
-  defp extract_label(binary, label_parts \\ [])
+  defp parse_answers(rest, binary, count, answers \\ [])
 
-  defp extract_label(<<0, rest::binary>>, label_parts) do
+  defp parse_answers(rest, _binary, 0, answers) do
+    [Enum.reverse(answers), rest]
+  end
+
+  defp parse_answers(rest, binary, count, answers) do
+    [answer, rest] = parse_answer(rest, binary)
+
+    parse_answers(rest, binary, count - 1, [answer | answers])
+  end
+
+  defp parse_answer(rest, binary) do
+    [label, rest] = extract_label(rest, binary, [])
+
+    <<_type::size(16), _class::size(16), ttl::size(32), len::size(16), ip::bytes-size(len),
+      rest::binary>> = rest
+
+    [
+      %{
+        ttl: ttl,
+        domain: label,
+        addr: ip |> :binary.bin_to_list() |> List.to_tuple()
+      },
+      rest
+    ]
+  end
+
+  defp extract_label(rest, binary, label_parts \\ [])
+
+  defp extract_label(<<1::size(1), 1::size(1), pos::size(14), rest::binary>>, binary, []) do
+    <<_::bytes-size(pos), jump::bytes>> = binary
+    [label, _] = extract_label(jump, binary)
+
+    [label, rest]
+  end
+
+  defp extract_label(<<0, rest::binary>>, _binary, label_parts) do
     [label_parts |> Enum.reverse() |> Enum.join("."), rest]
   end
 
-  defp extract_label(<<len::size(8), label_part::binary-size(len), rest::binary>>, label_parts) do
-    extract_label(rest, [label_part | label_parts])
+  defp extract_label(
+         <<len::size(8), label_part::binary-size(len), rest::binary>>,
+         binary,
+         label_parts
+       ) do
+    extract_label(rest, binary, [label_part | label_parts])
   end
 end

@@ -1,5 +1,5 @@
 defmodule DNS.PacketTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias DNS.Packet
 

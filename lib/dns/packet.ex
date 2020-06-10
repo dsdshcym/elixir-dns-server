@@ -1,4 +1,28 @@
 defmodule DNS.Packet do
+  def new_query(domain) do
+    %{
+      header: %{
+        id: 6666,
+        query_response: false,
+        operation_code: 0,
+        question_count: 1,
+        recursion_desired: false,
+        authoritative_answer: false,
+        truncated_message: false,
+        recursion_available: false,
+        reserved: 0,
+        response_code: 0,
+        answer_count: 0,
+        authority_count: 0,
+        additional_count: 0
+      },
+      questions: [%{name: domain, type: :A}],
+      answers: [],
+      authorities: [],
+      additionals: []
+    }
+  end
+
   def parse(binary) do
     with [header, rest] = parse_header(binary),
          [questions, rest] = parse_questions(rest, binary, header.question_count),

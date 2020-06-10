@@ -454,4 +454,51 @@ defmodule DNS.PacketTest do
              )
     end
   end
+
+  describe "new_query/1 for one domain" do
+    test "generates a random id" do
+      %{header: %{id: id}} = Packet.new_query("example.com")
+
+      assert id > 0
+      assert id < 65536
+    end
+
+    test "sets query_response to false" do
+      assert %{header: %{query_response: false}} = Packet.new_query("example.com")
+    end
+
+    test "sets operation_code to 0" do
+      assert %{header: %{operation_code: 0}} = Packet.new_query("example.com")
+    end
+
+    test "sets recursion_desired to false" do
+      assert %{header: %{recursion_desired: false}} = Packet.new_query("example.com")
+    end
+
+    test "sets question_count to 1" do
+      assert %{header: %{question_count: 1}} = Packet.new_query("example.com")
+    end
+
+    test "pushes the domain into questions" do
+      assert %{questions: [%{name: "example.com", type: :A}]} = Packet.new_query("example.com")
+    end
+
+    test "sets other fields to false or 0 or []" do
+      assert %{
+               header: %{
+                 authoritative_answer: false,
+                 truncated_message: false,
+                 recursion_available: false,
+                 reserved: 0,
+                 response_code: 0,
+                 answer_count: 0,
+                 authority_count: 0,
+                 additional_count: 0
+               },
+               answers: [],
+               authorities: [],
+               additionals: []
+             } = Packet.new_query("example.com")
+    end
+  end
 end

@@ -501,4 +501,251 @@ defmodule DNS.PacketTest do
              } = Packet.new_query("example.com")
     end
   end
+
+  describe "to_binary/1 header section" do
+    test "sets ID correctly" do
+      packet = %Packet{header: %Packet.Header{id: 65531}}
+
+      assert <<65531::16, _::bits>> = Packet.to_binary(packet)
+    end
+
+    test "sets QR correctly" do
+      packet = %Packet{header: %Packet.Header{id: 65531, query_response: false}}
+      assert <<_ID::16, 0::1, _::bits>> = Packet.to_binary(packet)
+
+      packet = %Packet{header: %Packet.Header{id: 65531, query_response: true}}
+      assert <<_ID::16, 1::1, _::bits>> = Packet.to_binary(packet)
+    end
+
+    test "sets Opcode correctly" do
+      packet = %Packet{header: %Packet.Header{id: 65531, operation_code: 15}}
+      assert <<_ID::16, _QR::1, 15::4, _::bits>> = Packet.to_binary(packet)
+    end
+
+    test "sets AA correctly" do
+      packet = %Packet{header: %Packet.Header{id: 65531, authoritative_answer: false}}
+      assert <<_ID::16, _QR::1, _Opcode::4, 0::1, _::bits>> = Packet.to_binary(packet)
+
+      packet = %Packet{header: %Packet.Header{id: 65531, authoritative_answer: true}}
+      assert <<_ID::16, _QR::1, _Opcode::4, 1::1, _::bits>> = Packet.to_binary(packet)
+    end
+
+    test "sets TC correctly" do
+      packet = %Packet{header: %Packet.Header{id: 65531, truncated_message: false}}
+      assert <<_ID::16, _QR::1, _Opcode::4, _AA::1, 0::1, _::bits>> = Packet.to_binary(packet)
+
+      packet = %Packet{header: %Packet.Header{id: 65531, truncated_message: true}}
+      assert <<_ID::16, _QR::1, _Opcode::4, _AA::1, 1::1, _::bits>> = Packet.to_binary(packet)
+    end
+
+    test "sets RD correctly" do
+      packet = %Packet{header: %Packet.Header{id: 65531, recursion_desired: false}}
+
+      assert <<_ID::16, _QR::1, _Opcode::4, _AA::1, _TC::1, 0::1, _::bits>> =
+               Packet.to_binary(packet)
+
+      packet = %Packet{header: %Packet.Header{id: 65531, recursion_desired: true}}
+
+      assert <<_ID::16, _QR::1, _Opcode::4, _AA::1, _TC::1, 1::1, _::bits>> =
+               Packet.to_binary(packet)
+    end
+
+    test "sets RA correctly" do
+      packet = %Packet{header: %Packet.Header{id: 65531, recursion_available: false}}
+
+      assert <<_ID::16, _QR::1, _Opcode::4, _AA::1, _TC::1, _RD::1, 0::1, _::bits>> =
+               Packet.to_binary(packet)
+
+      packet = %Packet{header: %Packet.Header{id: 65531, recursion_available: true}}
+
+      assert <<_ID::16, _QR::1, _Opcode::4, _AA::1, _TC::1, _RD::1, 1::1, _::bits>> =
+               Packet.to_binary(packet)
+    end
+
+    test "sets Z correctly" do
+      packet = %Packet{header: %Packet.Header{id: 65531, reserved: 7}}
+
+      assert <<_ID::16, _QR::1, _Opcode::4, _AA::1, _TC::1, _RD::1, _RA::1, 7::3, _::bits>> =
+               Packet.to_binary(packet)
+    end
+
+    test "sets RCODE correctly" do
+      packet = %Packet{header: %Packet.Header{id: 65531, response_code: 15}}
+
+      assert <<_ID::16, _QR::1, _Opcode::4, _AA::1, _TC::1, _RD::1, _RA::1, _Z::3, 15::4,
+               _::bits>> = Packet.to_binary(packet)
+    end
+
+    test "sets QDCOUNT correctly" do
+      packet = %Packet{header: %Packet.Header{id: 65531, question_count: 60000}}
+      assert <<_::32, 60000::16, _::bits>> = Packet.to_binary(packet)
+    end
+
+    test "sets ANCOUNT correctly" do
+      packet = %Packet{header: %Packet.Header{id: 65531, answer_count: 60001}}
+      assert <<_::32, _QDCOUNT::16, 60001::16, _::bits>> = Packet.to_binary(packet)
+    end
+
+    test "sets NSCOUNT correctly" do
+      packet = %Packet{header: %Packet.Header{id: 65531, authority_count: 60002}}
+      assert <<_::32, _QDCOUNT::16, _ANCOUNT::16, 60002::16, _::bits>> = Packet.to_binary(packet)
+    end
+
+    test "sets ARCOUNT correctly" do
+      packet = %Packet{header: %Packet.Header{id: 65531, additional_count: 60003}}
+
+      assert <<_::32, _QDCOUNT::16, _ANCOUNT::16, _NSCOUNT::16, 60003::16, _::bits>> =
+               Packet.to_binary(packet)
+    end
+  end
+
+  describe "to_binary/1 question section" do
+    test "one question" do
+      packet = %Packet{
+        header: %Packet.Header{id: 65531},
+        questions: [%Packet.Question{name: "example.com", type: :A}]
+      }
+
+      assert <<_HEADER::96, 7, "example", 3, "com", 0, 1::16, 0::16>> = Packet.to_binary(packet)
+    end
+
+    test "multiple questions" do
+      packet = %Packet{
+        header: %Packet.Header{id: 65531},
+        questions: [
+          %Packet.Question{name: "example.com", type: :A},
+          %Packet.Question{name: "test.example.com", type: :A}
+        ]
+      }
+
+      assert <<_HEADER::96, 7, "example", 3, "com", 0, 1::16, 0::16, 4, "test", 7, "example", 3,
+               "com", 0, 1::16, 0::16>> = Packet.to_binary(packet)
+    end
+  end
+
+  describe "to_binary/1 answer section" do
+    test "one A answer" do
+      packet = %Packet{
+        header: %Packet.Header{id: 65531},
+        answers: [
+          %{type: :A, ttl: 64321, domain: "example.com", addr: {192, 168, 1, 1}}
+        ]
+      }
+
+      assert <<_HEADER::96, 7, "example", 3, "com", 0, 1::16, 0::16, 64321::16, 4::16, 192, 168,
+               1, 1>> = Packet.to_binary(packet)
+    end
+
+    test "multiple various answers" do
+      packet = %Packet{
+        header: %Packet.Header{id: 65531},
+        answers: [
+          %{type: :A, ttl: 64321, domain: "example.com", addr: {192, 168, 1, 1}},
+          %{type: :NS, ttl: 64321, domain: "example.com", host: "ns.example.com"},
+          %{type: :CNAME, ttl: 64321, domain: "example.com", host: "cname.example.com"},
+          %{
+            type: :MX,
+            ttl: 64321,
+            domain: "example.com",
+            preference: 5,
+            exchange: "mail1.example.com"
+          },
+          %{
+            type: :AAAA,
+            ttl: 64321,
+            domain: "example.com",
+            addr: {0x2001, 0x502, 0x1CA1, 0, 0, 0, 0, 0x30}
+          }
+        ]
+      }
+
+      assert <<
+               _HEADER::96,
+               # A
+               7,
+               "example",
+               3,
+               "com",
+               0,
+               1::16,
+               0::16,
+               64321::16,
+               4::16,
+               192,
+               168,
+               1,
+               1,
+               # NS
+               7,
+               "example",
+               3,
+               "com",
+               0,
+               2::16,
+               0::16,
+               64321::16,
+               16::16,
+               2,
+               "ns",
+               7,
+               "example",
+               3,
+               "com",
+               0,
+               # CNAME
+               7,
+               "example",
+               3,
+               "com",
+               0,
+               5::16,
+               0::16,
+               64321::16,
+               19::16,
+               5,
+               "cname",
+               7,
+               "example",
+               3,
+               "com",
+               0,
+               # MX
+               7,
+               "example",
+               3,
+               "com",
+               0,
+               15::16,
+               0::16,
+               64321::16,
+               21::16,
+               5::16,
+               5,
+               "mail1",
+               7,
+               "example",
+               3,
+               "com",
+               0,
+               # AAAA
+               7,
+               "example",
+               3,
+               "com",
+               0,
+               28::16,
+               0::16,
+               64321::16,
+               16::16,
+               0x2001::16,
+               0x0502::16,
+               0x1CA1::16,
+               0::16,
+               0::16,
+               0::16,
+               0::16,
+               0x30::16
+             >> = Packet.to_binary(packet)
+    end
+  end
 end

@@ -1,6 +1,7 @@
 defmodule DNS.Packet do
   alias DNS.Packet.Header
   alias DNS.Packet.Question
+  alias DNS.Packet.ResourceRecord
 
   defstruct header: %Header{}, questions: [], answers: [], authorities: [], additionals: []
 
@@ -32,6 +33,15 @@ defmodule DNS.Packet do
       },
       questions: [%Question{name: domain, type: :A}]
     }
+  end
+
+  @spec to_binary(t()) :: binary()
+  def to_binary(%__MODULE__{} = packet) do
+    Header.to_binary(packet.header) <>
+      Question.to_binary(packet.questions) <>
+      ResourceRecord.to_binary(packet.answers) <>
+      ResourceRecord.to_binary(packet.authorities) <>
+      ResourceRecord.to_binary(packet.additionals)
   end
 
   @spec parse(binary()) :: t()
@@ -198,6 +208,15 @@ defmodule DNS.Packet do
     }
   end
 
+  defp build_resource_record(domain, _, ttl, rdata, _binary) do
+    %{
+      type: :UNKNOWN,
+      ttl: ttl,
+      domain: domain,
+      rdata: rdata
+    }
+  end
+
   defp extract_label(rest, binary, label_parts \\ [])
 
   defp extract_label(<<1::size(1), 1::size(1), pos::size(14), rest::binary>>, binary, label_parts) do
@@ -225,4 +244,5 @@ defmodule DNS.Packet do
   defp resolve_type(5), do: :CNAME
   defp resolve_type(15), do: :MX
   defp resolve_type(28), do: :AAAA
+  defp resolve_type(_), do: :UNKNOWN
 end

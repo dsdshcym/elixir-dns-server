@@ -606,7 +606,7 @@ defmodule DNS.PacketTest do
         questions: [%Packet.Question{name: "example.com", type: :A}]
       }
 
-      assert <<_HEADER::96, 7, "example", 3, "com", 0, 1::16, 0::16>> = Packet.to_binary(packet)
+      assert <<_HEADER::96, 7, "example", 3, "com", 0, 1::16, 1::16>> = Packet.to_binary(packet)
     end
 
     test "multiple questions" do
@@ -618,8 +618,8 @@ defmodule DNS.PacketTest do
         ]
       }
 
-      assert <<_HEADER::96, 7, "example", 3, "com", 0, 1::16, 0::16, 4, "test", 7, "example", 3,
-               "com", 0, 1::16, 0::16>> = Packet.to_binary(packet)
+      assert <<_HEADER::96, 7, "example", 3, "com", 0, 1::16, 1::16, 4, "test", 7, "example", 3,
+               "com", 0, 1::16, 1::16>> = Packet.to_binary(packet)
     end
   end
 

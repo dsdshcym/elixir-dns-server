@@ -11,7 +11,7 @@ defmodule DNS.Packet.Question do
   def to_binary(%__MODULE__{} = question) do
     to_label(question.name) <>
       to_type(question.type) <>
-      <<0::16>>
+      <<1::16>>
   end
 
   defp to_label(binary) do

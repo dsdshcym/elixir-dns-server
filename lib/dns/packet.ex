@@ -48,10 +48,14 @@ defmodule DNS.Packet do
   @spec parse(binary()) :: t()
   def parse(binary) do
     {header, rest} = parse_header(binary)
-    {questions, rest} = parse_questions(rest, binary, header.question_count)
-    {answers, rest} = parse_resource_records(rest, binary, header.answer_count)
-    {authorities, rest} = parse_resource_records(rest, binary, header.authority_count)
-    {additionals, _rest} = parse_resource_records(rest, binary, header.additional_count)
+
+    {:ok, [questions, answers, authorities, additionals], ""} =
+      sequence([
+        repeat(question_parser(binary), header.question_count),
+        repeat(resource_record_parser(binary), header.answer_count),
+        repeat(resource_record_parser(binary), header.authority_count),
+        repeat(resource_record_parser(binary), header.additional_count)
+      ]).(rest)
 
     %__MODULE__{
       header: header,
@@ -98,23 +102,32 @@ defmodule DNS.Packet do
     }
   end
 
-  defp parse_questions(rest, _binary, count, questions \\ [])
+  defp sequence(parsers) do
+    fn input ->
+      case parsers do
+        [] ->
+          {:ok, [], input}
 
-  defp parse_questions(rest, _binary, 0, questions) do
-    {Enum.reverse(questions), rest}
+        [first_parser | other_parsers] ->
+          with {:ok, first_term, rest} <- first_parser.(input),
+               {:ok, other_terms, rest} <- sequence(other_parsers).(rest),
+               do: {:ok, [first_term | other_terms], rest}
+      end
+    end
   end
 
-  defp parse_questions(rest, binary, count, questions) do
-    {question, rest} = parse_question(rest, binary)
-    parse_questions(rest, binary, count - 1, [question | questions])
+  defp repeat(parser, count) do
+    parser
+    |> List.duplicate(count)
+    |> sequence()
   end
 
-  defp parse_question(rest, binary) do
-    {label, rest} = extract_label(rest, binary)
-
-    <<type_enum::size(16), _class::size(16), rest::binary>> = rest
-
-    {build_question(label, type_enum), rest}
+  defp question_parser(binary) do
+    fn input ->
+      {label, rest} = extract_label(input, binary)
+      <<type_enum::size(16), _class::size(16), rest::binary>> = rest
+      {:ok, build_question(label, type_enum), rest}
+    end
   end
 
   defp build_question(name, type_enum) when is_number(type_enum) do
@@ -125,27 +138,17 @@ defmodule DNS.Packet do
     %Question{name: name, type: type}
   end
 
-  defp parse_resource_records(rest, binary, count, resource_records \\ [])
+  defp resource_record_parser(binary) do
+    fn input ->
+      {label, rest} = extract_label(input, binary, [])
 
-  defp parse_resource_records(rest, _binary, 0, resource_records) do
-    {Enum.reverse(resource_records), rest}
-  end
+      <<type_enum::size(16), _class::size(16), ttl::size(32), len::size(16),
+        rdata::bytes-size(len), rest::binary>> = rest
 
-  defp parse_resource_records(rest, binary, count, resource_records) do
-    {answer, rest} = parse_resource_record(rest, binary)
+      resource_record = build_resource_record(label, type_enum, ttl, rdata, binary)
 
-    parse_resource_records(rest, binary, count - 1, [answer | resource_records])
-  end
-
-  defp parse_resource_record(rest, binary) do
-    {label, rest} = extract_label(rest, binary, [])
-
-    <<type_enum::size(16), _class::size(16), ttl::size(32), len::size(16), rdata::bytes-size(len),
-      rest::binary>> = rest
-
-    answer = build_resource_record(label, type_enum, ttl, rdata, binary)
-
-    {answer, rest}
+      {:ok, resource_record, rest}
+    end
   end
 
   defp build_resource_record(domain, type_enum, ttl, rdata, binary) when is_number(type_enum) do

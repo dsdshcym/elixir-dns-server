@@ -17,7 +17,8 @@ defmodule DNS.Packet do
   def new_query(domain) do
     %__MODULE__{
       header: %Header{
-        id: 6666,
+        # TODO: pass id as an argument
+        id: Enum.random(0..65535),
         query_response: false,
         operation_code: 0,
         question_count: 1,

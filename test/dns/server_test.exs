@@ -40,5 +40,20 @@ defmodule DNS.ServerTest do
 
       Server.stop(server)
     end
+
+    test "handle queries concurrently" do
+      {:ok, server} = Server.start()
+
+      assert [
+               {:ok, {:ok, %{answers: [%{domain: "zhihu.com"} | _]}}},
+               {:ok, {:ok, %{answers: [%{domain: "yahoo.com"} | _]}}},
+               {:ok, {:ok, %{answers: [%{domain: "baidu.com"} | _]}}} | _
+             ] =
+               ["zhihu.com", "yahoo.com", "baidu.com"]
+               |> Task.async_stream(&Server.recursive_lookup(server, &1))
+               |> Enum.to_list()
+
+      Server.stop(server)
+    end
   end
 end

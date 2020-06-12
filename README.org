@@ -1,0 +1,15 @@
+* Write a DNS server from scratch in Elixir
+
+Inspired by [[https://github.com/EmilHernvall/dnsguide][EmilHernvall/dnsguide: A guide to writing a DNS Server from scratch in Rust]], this project is my attempt to write a DNS server in Elixir.
+
+** How to use this server?
+** Takeaways
+- Parsing a DNS Packet
+  + Understanding the Format
+  + Basic Pattern Matching
+  + Parser Combinator
+    * Readability
+    * Benchmark
+- Working with Dialyzer
+- Building a UDP Server
+- Adding concurrency like a breeze

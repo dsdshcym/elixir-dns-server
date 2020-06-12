@@ -3,6 +3,55 @@
 Inspired by [[https://github.com/EmilHernvall/dnsguide][EmilHernvall/dnsguide: A guide to writing a DNS Server from scratch in Rust]], this project is my attempt to write a DNS server in Elixir.
 
 ** How to use this server?
+For now, this server only supports querying an ~A~ record for one domain.
+
+You can open ~iex -S mix~, and spin up a server like this:
+
+#+begin_src elixir
+  {:ok, server} = DNS.Server.start
+  # =>
+  # {:ok, #PID<0.191.0>}
+
+  DNS.Server.recursive_lookup(server, "baidu.com")
+  # =>
+  # {:ok,
+  #  %DNS.Packet{
+  #    additionals: [
+  #      %{addr: {202, 108, 22, 220}, domain: "dns.baidu.com", ttl: 86400, type: :A},
+  #      %{addr: {220, 181, 33, 31}, domain: "ns2.baidu.com", ttl: 86400, type: :A},
+  #      %{addr: {112, 80, 248, 64}, domain: "ns3.baidu.com", ttl: 86400, type: :A},
+  #      %{addr: {14, 215, 178, 80}, domain: "ns4.baidu.com", ttl: 86400, type: :A},
+  #      %{addr: {180, 76, 76, 92}, domain: "ns7.baidu.com", ttl: 86400, type: :A}
+  #    ],
+  #    answers: [
+  #      %{addr: {39, 156, 69, 79}, domain: "baidu.com", ttl: 600, type: :A},
+  #      %{addr: {220, 181, 38, 148}, domain: "baidu.com", ttl: 600, type: :A}
+  #    ],
+  #    authorities: [
+  #      %{domain: "baidu.com", host: "ns4.baidu.com", ttl: 86400, type: :NS},
+  #      %{domain: "baidu.com", host: "dns.baidu.com", ttl: 86400, type: :NS},
+  #      %{domain: "baidu.com", host: "ns2.baidu.com", ttl: 86400, type: :NS},
+  #      %{domain: "baidu.com", host: "ns7.baidu.com", ttl: 86400, type: :NS},
+  #      %{domain: "baidu.com", host: "ns3.baidu.com", ttl: 86400, type: :NS}
+  #    ],
+  #    header: %DNS.Packet.Header{
+  #      additional_count: 5,
+  #      answer_count: 2,
+  #      authoritative_answer: true,
+  #      authority_count: 5,
+  #      id: 15943,
+  #      operation_code: 0,
+  #      query_response: true,
+  #      question_count: 1,
+  #      recursion_available: false,
+  #      recursion_desired: false,
+  #      reserved: 0,
+  #      response_code: 0,
+  #      truncated_message: false
+  #    },
+  #    questions: [%DNS.Packet.Question{name: "baidu.com", type: :A}]
+  #  }}
+#+end_src
 ** Takeaways
 - Parsing a DNS Packet
   + Understanding the Format

@@ -53,12 +53,31 @@ You can open ~iex -S mix~, and spin up a server like this:
   #  }}
 #+end_src
 ** Takeaways
-- Parsing a DNS Packet
+The server implement is still in a simple and early stage.
+But I've already learned a ton:
+- How to parse a DNS Packet
+
+  Parsing a DNS Packet correctly is one of the key foundations for a workable DNS Server.
+  Below are the steps I took to understand the packet format, implement it in Elixir, and improve the implementation:
+
   + Understanding the Format
+
+    To understand the format, the best place is the original document that described the DNS implementation and specification:
+    [[https://tools.ietf.org/html/rfc1035][RFC 1035 - Domain names - implementation and specification]].
+
+    Several fun facts I learned from this documentation:
+    1. What's the syntax of a domain.
+    2. Why domain names are case-insensitive.
   + Basic Pattern Matching
   + Parser Combinator
     * Readability
     * Benchmark
-- Working with Dialyzer
-- Building a UDP Server
-- Adding concurrency like a breeze
+- How to work with Dialyzer
+- How to build a UDP Server in Elixir
+- Adding concurrency to an Elixir program is like a breeze
+
+** Future Improvements
+1. Parse domains as FQDN
+2. Add support to more resource record types (:TXT, :SOA, :ALIAS, etc.)
+3. Caching
+4. Extract functional core from ~DNS.Server~
